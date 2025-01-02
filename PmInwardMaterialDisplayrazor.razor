@@ -1,0 +1,386 @@
+﻿ @page "/AddPmInwardMaterial"
+@using System.Net.Http
+@using System.Net.Http.Json
+@using ERP_API.Moduls
+@using MudBlazor
+@using MudBlazor.Components
+@using UI_ERP.Reusable
+@inject NavigationManager Navigation
+@inject HttpClient HttpClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<div class="container" id="container" style="background-color: #f0f0f0;">
+    <div class="row rounded m-1">
+        <div class="col-md-5">
+            <h5>PmInwardMaterial Details</h5>
+        </div>
+        <div class="col-md-4">
+            <MudTextField @bind-Value="SearchValue" Placeholder="Search" Clearable="true" Adornment="Adornment.Start" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"></MudTextField>
+        </div>
+
+        @* <div class="col-md-4"></div> *@
+        <div class="col-md-3 d-flex justify-content-end">
+            <MudTooltip Text="Add Inward Material">
+                <MudIconButton Variant="Variant.Filled" Icon="@Icons.Material.Filled.Add" Size="Size.Large" Color="Color.Primary" Style="padding: 0px;" OnClick="OpenCreateDialog" />
+            </MudTooltip>
+        </div>
+    </div>
+
+    <MudTable Items="FilteredRawInwards" Hover="true" SortLabel="Sort By" Striped="true" RowsPerPage="25" Height="513px" Breakpoint="Breakpoint.Sm" Virtualize="true" FixedHeader="true" Dense="true"
+              CustomHeader="true" CustomFooter="true" Bordered="true" HeaderClass="table-head-bordered" FooterClass="table-foot-bordered" Class="displayTable">
+        <HeaderContent>
+            <MudTh>SL NO</MudTh>
+            <MudTh>Inv NO</MudTh>
+            <MudTh>Inv Date</MudTh>
+            <MudTh>GRN Date</MudTh>
+            <MudTh>Vendor Name </MudTh>
+            <MudTh>PoId</MudTh>
+            <MudTh>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <span>View</span>
+                    <span>Edit</span>
+                    <span>Delete</span>
+                </div>
+
+            </MudTh>
+
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd style="max-width: 100px;">@(PmInwards.IndexOf(context) + 1)</MudTd>
+            <MudTd>@context.InvNo</MudTd>
+            <MudTd>@($"{context.InvDate:yyyy-MM-dd}")</MudTd>
+            <MudTd>@($"{context.GRNDate:yyyy-MM-dd}")</MudTd>
+            <MudTd>@GetVendorName(context.VendId)</MudTd>
+            @* <MudTd>@GetPurchaseOrderNumber(context.POId)</MudTd> *@
+            <MudTd style="text-align: right;">
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small" Variant="Variant.Filled" Color="Color.Tertiary" OnClick="@(async () => await OpenDialogForView(context.InMatId))" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" OnClick="@(async () => await OpenDialogForEdit(context.InMatId))" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => DeleteInwardMaterial(context.InMatId))" />
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+</div>
+
+@code {
+    private PmInwardMaterialCreateDto PmInwardMaterial = new PmInwardMaterialCreateDto();
+    private List<PmInwardMaterialReadOnlyDto> PmInwards { get; set; } = new List<PmInwardMaterialReadOnlyDto>();
+
+
+    private List<ItemReadOnlyDto> Items { get; set; } = new List<ItemReadOnlyDto>();
+
+    private List<VendorReadOnlyDto> Vendors { get; set; } = new List<VendorReadOnlyDto>();
+
+    private List<StoreReadOnlyDto> Stores { get; set; } = new List<StoreReadOnlyDto>();
+    // private List<PurchaseorderReadOnly> PurchaseOrders { get; set; } = new List<PurchaseorderReadOnly>();
+    //private List<CustomerReadOnlyDto> Customers { get; set; } = new List<CustomerReadOnlyDto>();
+    private List<UomReadOnlyDto> UOMs { get; set; } = new List<UomReadOnlyDto>();
+    private List<PmInwardMaterialSubReadOnlyDto> PmInwardMaterialSub { get; set; } = new List<PmInwardMaterialSubReadOnlyDto>();
+    private bool DialogVisible { get; set; } = false;
+    private bool isViewMode { get; set; } = true;
+    private string SearchValue { get; set; } = string.Empty;
+
+
+
+    private string GetVendorName(int? vendId)
+    {
+        var item = Vendors.FirstOrDefault(i => i.VendId == vendId);
+        return item?.VendName ?? string.Empty;
+    }
+
+    // private string GetPurchaseOrderNumber(int? POId)
+    // {
+    //     var item = PurchaseOrders.FirstOrDefault(i => i.POId == POId);
+    //     return item?.Pono ?? string.Empty;
+    // }
+    // private string GetCustomerName(int? custId)
+    // {
+    //     var item = Customers.FirstOrDefault(i => i.CustId == custId);
+    //     return item?.CustName ?? string.Empty;
+    // }
+    private DialogOptions FullScreenDialogOptions = new DialogOptions
+        {
+            FullScreen = true,
+            CloseButton = true
+        };
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+
+            PmInwards = await HttpClient.GetFromJsonAsync<List<PmInwardMaterialReadOnlyDto>>($"{Variable.API_URL}/api/PmInwardMaterials");
+
+            PmInwards = PmInwards.OrderByDescending(po => po.InMatId).ToList();
+
+
+            Items = await HttpClient.GetFromJsonAsync<List<ItemReadOnlyDto>>($"{Variable.API_URL}/api/Items");
+            Vendors = await HttpClient.GetFromJsonAsync<List<VendorReadOnlyDto>>($"{Variable.API_URL}/api/Vendors");
+            Stores = await HttpClient.GetFromJsonAsync<List<StoreReadOnlyDto>>($"{Variable.API_URL}/api/Stores");
+
+            //Customers = await HttpClient.GetFromJsonAsync<List<CustomerReadOnlyDto>>($"{Variable.API_URL}/api/Customers");
+            UOMs = await HttpClient.GetFromJsonAsync<List<UomReadOnlyDto>>($"{Variable.API_URL}/api/UnitOfMeasurements");
+            // PurchaseOrders = await HttpClient.GetFromJsonAsync<List<PurchaseorderReadOnly>>($"{Variable.API_URL}/api/Purchaseorders");
+
+            // UOMs = await HttpClient.GetFromJsonAsync<List<UnitOfMeasureReadOnlyDto>>($"{Variable.API_URL}/api/UnitOfMeasures");
+
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error fetching data: {ex.Message}", Severity.Error);
+        }
+    }
+    private IEnumerable<PmInwardMaterialReadOnlyDto> FilteredRawInwards =>
+       PmInwards?.Where(PmInwardMaterial =>
+       string.IsNullOrWhiteSpace(SearchValue) ||
+       (PmInwardMaterial.InvNo?.Contains(SearchValue, StringComparison.OrdinalIgnoreCase) ?? false) ||
+       (PmInwardMaterial.GRNNo?.Contains(SearchValue, StringComparison.OrdinalIgnoreCase) ?? false) ||
+       (PmInwardMaterial.VendId.ToString().Contains(SearchValue, StringComparison.OrdinalIgnoreCase))
+       ) ?? Enumerable.Empty<PmInwardMaterialReadOnlyDto>();
+
+
+
+    private async Task OpenCreateDialog()
+    {
+        PmInwardMaterial = new PmInwardMaterialCreateDto();
+        PmInwardMaterialSub = new List<PmInwardMaterialSubReadOnlyDto>();
+        isViewMode = false;
+        DialogVisible = true;
+
+        var dialogParameters = new DialogParameters
+            {
+                ["PmInwardMaterial"] = PmInwardMaterial,
+                ["isViewMode"] = isViewMode,
+
+                ["Stores"] = Stores,
+
+                ["Vendors"] = Vendors,
+                // ["PurchaseOrders"] = PurchaseOrders,
+
+                ["Items"] = Items,
+
+                ["UOMs"] = UOMs,
+                ["PmInwardMaterialSub"] = PmInwardMaterialSub,
+
+            };
+        var dialog = DialogService.Show<PmInwardMaterialDialog>("Create Inward Material", dialogParameters, FullScreenDialogOptions);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await AddInwardMaterial();
+        }
+    }
+
+    private async Task AddInwardMaterial()
+    {
+        try
+        {
+            PmInwardMaterial.PmInwardMaterialSubs = PmInwardMaterialSub;
+
+
+            Console.WriteLine($"Sending Inward Material: {System.Text.Json.JsonSerializer.Serialize(PmInwardMaterial)}");
+
+            var response = await HttpClient.PostAsJsonAsync($"{Variable.API_URL}/api/PmInwardMaterials", PmInwardMaterial);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Inward Material saved successfully", Severity.Success);
+                DialogVisible = false;
+                await ReloadInwardMaterials();
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error response: {errorMessage}");
+                Snackbar.Add($"Failed to save Inward Material: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception in AddInwardMaterial: {ex}");
+            Snackbar.Add($"An error occurred while saving Inward Material: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenDialogForView(int id)
+    {
+        isViewMode = true;
+        await LoadInwardMaterialData(id);
+        DialogVisible = true;
+
+        var dialogParameters = new DialogParameters
+            {
+                ["PmInwardMaterial"] = PmInwardMaterial,
+                ["isViewMode"] = isViewMode,
+                ["Vendors"] = Vendors,
+                ["Stores"] = Stores,
+                ["Items"] = Items,
+                // ["PurchaseOrders"] = PurchaseOrders,
+                ["UOMs"] = UOMs,
+                ["PmInwardMaterialSub"] = PmInwardMaterialSub,
+
+
+            };
+        var dialog = DialogService.Show<PmInwardMaterialDialog>("View Inward Material", dialogParameters, FullScreenDialogOptions);
+        await dialog.Result;
+    }
+
+    private async Task OpenDialogForEdit(int id)
+    {
+        isViewMode = false;
+        await LoadInwardMaterialData(id);
+        DialogVisible = true;
+
+        var dialogParameters = new DialogParameters
+            {
+                ["PmInwardMaterial"] = PmInwardMaterial,
+                ["isViewMode"] = isViewMode,
+                ["Vendors"] = Vendors,
+
+                ["Stores"] = Stores,
+
+                ["Items"] = Items,
+                // ["PurchaseOrders"] = PurchaseOrders,
+                ["UOMs"] = UOMs,
+                ["PmInwardMaterialSub"] = PmInwardMaterialSub,
+            };
+        var dialog = DialogService.Show<PmInwardMaterialDialog>("Edit Inward Material", dialogParameters, FullScreenDialogOptions);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await UpdateInwardMaterial();
+        }
+    }
+
+    private async Task UpdateInwardMaterial()
+    {
+        try
+        {
+            var response = await HttpClient.PutAsJsonAsync($"{Variable.API_URL}/api/PmInwardMaterials/{PmInwardMaterial.InMatId}", PmInwardMaterial);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Inward Material updated successfully", Severity.Success);
+                DialogVisible = false;
+                await ReloadInwardMaterials();
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to update Inward Material: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred while updating Inward Material: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadInwardMaterialData(int id)
+    {
+        try
+        {
+            var materialDto = await HttpClient.GetFromJsonAsync<PmInwardMaterialCreateDto>($"{Variable.API_URL}/api/PmInwardMaterials/{id}");
+            if (materialDto != null)
+            {
+                PmInwardMaterial = materialDto;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        try
+        {
+            var materialDto = await HttpClient.GetFromJsonAsync<PmInwardMaterialCreateDto>($"{Variable.API_URL}/api/PmInwardMaterials/{id}");
+            if (materialDto != null)
+            {
+                PmInwardMaterial = materialDto;
+
+                if (materialDto.PmInwardMaterialSubs != null && materialDto.PmInwardMaterialSubs.Any())
+                {
+                    PmInwardMaterialSub = materialDto.PmInwardMaterialSubs.Where(item => item.InMatId == id).ToList();
+                }
+                else
+                {
+                    PmInwardMaterialSub = new List<PmInwardMaterialSubReadOnlyDto>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteInwardMaterial(int id)
+    {
+        try
+        {
+            bool? confirmDelete = await DialogService.ShowMessageBox(
+                "Confirm Delete",
+                "Are you sure you want to delete this Inward Material?",
+                yesText: "Delete",
+                cancelText: "Cancel"
+            );
+
+            if (confirmDelete == true)
+            {
+                var response = await HttpClient.DeleteAsync($"{Variable.API_URL}/api/PmInwardMaterials/{id}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    PmInwards.RemoveAll(b => b.InMatId == id);
+
+                    await DialogService.ShowMessageBox(
+                        "Success",
+                        "Inward Material deleted successfully.",
+                        yesText: "OK"
+                    );
+                    await ReloadInwardMaterials();
+                }
+                else
+                {
+                    var errorMessage = await response.Content.ReadAsStringAsync();
+                    await DialogService.ShowMessageBox(
+                        "Error",
+                        $"Failed to delete Inward Material: {errorMessage}",
+                        yesText: "OK"
+                    );
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowMessageBox(
+                "Error",
+                $"An error occurred while deleting Inward Material: {ex.Message}",
+                yesText: "OK"
+            );
+        }
+    }
+
+    private async Task ReloadInwardMaterials()
+    {
+        PmInwards = await HttpClient.GetFromJsonAsync<List<PmInwardMaterialReadOnlyDto>>($"{Variable.API_URL}/api/PmInwardMaterials");
+        StateHasChanged();
+    }
+}
+
+<style>
+    label {
+        font-size: 1rem;
+    }
+
+    #container {
+        padding: 15px;
+        margin: 0px;
+        max-width: 100%;
+    }
+</style>
