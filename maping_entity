@@ -1,0 +1,215 @@
+ public virtual DbSet<Storeadd> Storeadds { get; set; }
+
+ public virtual DbSet<Storeaddsub> Storeaddsubs { get; set; }
+
+ public virtual DbSet<RawInwardMaterial> RawInwardMaterials { get; set; }
+
+ public virtual DbSet<RawInwardMaterialSub> RawInwardMaterialSubs { get; set; }
+ public virtual DbSet<PmInwardMaterial> PmInwardMaterials { get; set; }
+
+ public virtual DbSet<PmInwardMaterialSub> PmInwardMaterialSubs { get; set; }
+ modelBuilder.Entity<RawInwardMaterial>(entity =>
+ {
+     entity
+    .HasKey(e => e.InMatId).HasName("PRIMARY");
+     entity
+         .ToTable("rawinwardmaterial");
+
+     // Ensure Id is auto-incremented (this is usually the default behavior for primary keys)
+     entity.Property(e => e.InMatId);
+        
+
+     entity.Property(e => e.InvDate).HasColumnType("datetime");
+     entity.Property(e => e.InvNo).HasMaxLength(50);
+
+
+     entity.HasIndex(e => e.InMatId, "InMatId").IsUnique();
+
+
+     entity.Property(e => e.StoreAddId).HasDefaultValueSql("'0'"); 
+     entity.Property(e => e.VendId).HasDefaultValueSql("'0'");
+     entity.Property(e => e.POId).HasDefaultValueSql("'0'");
+     entity.Property(e => e.StoreId).HasDefaultValueSql("'0'");
+
+     entity.Property(e => e.GRNDate).HasColumnType("datetime");
+     entity.Property(e => e.GRNNo).HasMaxLength(50);
+
+     entity.HasMany(d => d.RawInwardMaterialSubs).WithOne(p => p.RawInwardMaterial)
+    .HasForeignKey(p => p.InMatId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+     entity.HasMany(d => d.Storeadds).WithOne(p => p.RawInwardMaterial)
+   .HasForeignKey(p => p.InMatId)
+   .OnDelete(DeleteBehavior.Cascade);
+
+
+ });
+
+ modelBuilder.Entity<RawInwardMaterialSub>(entity =>
+ {
+     entity.HasKey(e => e.InMatSubId).HasName("PRIMARY");
+     entity.ToTable("rawinwardmaterialsub");
+
+
+     entity.Property(e => e.ItemId).HasDefaultValueSql("'0'");
+
+     entity.Property(e => e.Qty).HasDefaultValueSql("'0'");
+   
+
+
+     entity.Property(e => e.SlNo).HasDefaultValueSql("'0'");
+
+     entity.Property(e => e.NoOfBags).HasDefaultValueSql("'0'");
+
+     entity.Property(e => e.BatchNo).HasMaxLength(50);
+
+
+
+ });
+modelBuilder.Entity<PmInwardMaterial>(entity =>
+{
+    entity
+   .HasKey(e => e.InMatId).HasName("PRIMARY");
+    entity
+        .ToTable("pminwardmaterial");
+
+    entity.Property(e => e.InvDate).HasColumnType("datetime");
+    entity.Property(e => e.InvNo).HasMaxLength(50);
+
+
+    entity.HasIndex(e => e.InMatId, "InMatId").IsUnique();
+
+
+
+    entity.Property(e => e.VendId).HasDefaultValueSql("'0'");
+    entity.Property(e => e.POId).HasDefaultValueSql("'0'");
+    entity.Property(e => e.StoreId).HasDefaultValueSql("'0'");
+
+    entity.Property(e => e.GRNDate).HasColumnType("datetime");
+    entity.Property(e => e.GRNNo).HasMaxLength(50);
+
+    entity.HasMany(d => d.PmInwardMaterialSubs).WithOne(p => p.PmInwardMaterial)
+   .HasForeignKey(p => p.InMatId)
+   .OnDelete(DeleteBehavior.Cascade);
+    entity.HasMany(d => d.Storeadds).WithOne(p => p.PmInwardMaterial)
+ .HasForeignKey(p => p.InMatId)
+ .OnDelete(DeleteBehavior.Cascade);
+
+
+});
+
+modelBuilder.Entity<PmInwardMaterialSub>(entity =>
+{
+    entity.HasKey(e => e.InMatSubId).HasName("PRIMARY");
+    entity.ToTable("pminwardmaterialsub");
+
+
+    entity.Property(e => e.ItemId).HasDefaultValueSql("'0'");
+
+
+
+    entity.Property(e => e.Qty).HasDefaultValueSql("'0'");
+
+    entity.Property(e => e.SlNo).HasDefaultValueSql("'0'");
+
+    entity.Property(e => e.NoOfBags).HasDefaultValueSql("'0'");
+
+    entity.Property(e => e.BatchNo).HasMaxLength(50);
+
+
+
+});modelBuilder.Entity<Storeadd>(entity =>
+{
+    entity
+   .HasKey(e => e.StoreAddId).HasName("PRIMARY");
+    entity
+        .ToTable("storeadd");
+ 
+    entity.Property(e => e.StoreAddDate)
+        .HasColumnType("datetime")
+        .HasColumnName("StoreAddDate");
+    entity.Property(e => e.StoreAddNo)
+        .HasDefaultValueSql("'0'")
+        .HasColumnName("StoreAddNo");
+    entity.Property(e => e.StoreId).HasDefaultValueSql("'0'");
+    entity.Property(e => e.Source).HasDefaultValueSql("'0'");
+    entity.Property(e => e.RefDocId).HasDefaultValueSql("'0'");
+   
+
+    entity.HasMany(d => d.Storeaddsubs).WithOne(p => p.Storeadd)
+   .HasForeignKey(p => p.StoreAddId)
+   .OnDelete(DeleteBehavior.Restrict);
+});
+
+modelBuilder.Entity<Storeaddsub>(entity =>
+{
+    entity
+  .HasKey(e => e.storeAddSubId).HasName("PRIMARY");
+    entity
+        .ToTable("storeaddsub");
+
+    entity.HasIndex(e => e.SlNo, "SlNo");
+
+    entity.Property(e => e.Trak)
+    .HasDefaultValueSql("NULL");
+
+    entity.Property(e => e.BagNo).HasDefaultValueSql("'0'");
+    entity.Property(e => e.BalQty).HasDefaultValueSql("'0'");
+    
+    
+
+    entity.Property(e => e.ItemId).HasDefaultValueSql("'0'");
+    entity.Property(e => e.Qty).HasDefaultValueSql("'0'");
+       
+    
+    entity.Property(e => e.SlNo).HasDefaultValueSql("'0'");
+    
+});
+ // Raw Inward Material Mappings
+ CreateMap<RawInwardMaterialCreateOnlyDto, RawInwardMaterial>()
+     .ForMember(dest => dest.InMatId, opt => opt.Ignore()) // Ignore InMatId as it may be auto-generated
+     .ForMember(dest => dest.RawInwardMaterialSubs, opt => opt.Condition(src => src.RawInwardMaterialSubs != null))  // Only map RawInwardMaterialSubs if not null
+     .ForMember(dest => dest.Storeadds, opt => opt.Condition(src => src.Storeadds != null));  // Only map Storeadds if not null
+
+ CreateMap<RawInwardMaterial, RawInwardMaterialReadOnlyDto>();
+
+ // Sub entity mappings for Raw Inward Material
+ CreateMap<RawInwardMaterialSubReadOnlyDto, RawInwardMaterialSub>()
+     .ForMember(dest => dest.InMatSubId, opt => opt.Ignore())  // Ignore the sub-id as it may be auto-generated
+     .ForMember(dest => dest.InMatId, opt => opt.Ignore())  // Ignore InMatId if it's already set
+     .ForMember(dest => dest.RawInwardMaterial, opt => opt.Ignore());  // Ignore the reference to `RawInwardMaterial`
+
+ CreateMap<RawInwardMaterialSub, RawInwardMaterialSubReadOnlyDto>();
+
+ // Storeadd mappings (used for RawInwardMaterial, PmInwardMaterial, FgInwardMaterial)
+ CreateMap<StoreAddReadOnlyDto, Storeadd>()
+     .ForMember(dest => dest.StoreAddId, opt => opt.Ignore())  // Ignore StoreAddId if auto-generated
+     .ForMember(dest => dest.InMatId, opt => opt.Ignore())  // Ignore InMatId, as it will be set by specific material types
+     .ForMember(dest => dest.RawInwardMaterial, opt => opt.Ignore())  // Ignore the RawInwardMaterial relationship
+     .ForMember(dest => dest.PmInwardMaterial, opt => opt.Ignore()); // Ignore the PmInwardMaterial relationship
+      // Ignore the FgInwardMaterial relationship
+
+ CreateMap<Storeadd, StoreAddReadOnlyDto>();
+
+ // Store sub mappings
+ CreateMap<StoreAddSubReadOnlyDto, Storeaddsub>()
+     .ForMember(dest => dest.StoreAddId, opt => opt.Ignore())  // Ignore StoreAddId if auto-generated
+     .ForMember(dest => dest.Storeadd, opt => opt.Ignore());  // Ignore the relationship to Storeadd
+
+ CreateMap<Storeaddsub, StoreAddSubReadOnlyDto>();
+
+ // Pm Inward Material Mappings
+ CreateMap<PmInwardMaterialCreateDto, PmInwardMaterial>()
+     .ForMember(dest => dest.InMatId, opt => opt.Ignore())  // Ignore InMatId
+     .ForMember(dest => dest.PmInwardMaterialSubs, opt => opt.Condition(src => src.PmInwardMaterialSubs != null))  // Only map PmInwardMaterialSubs if not null
+     .ForMember(dest => dest.Storeadds, opt => opt.Condition(src => src.Storeadds != null));  // Only map Storeadds if not null
+
+ CreateMap<PmInwardMaterial, PmInwardMaterialReadOnlyDto>();
+
+ // Sub entity mappings for Pm Inward Material
+ CreateMap<PmInwardMaterialSubReadOnlyDto, PmInwardMaterialSub>()
+     .ForMember(dest => dest.InMatSubId, opt => opt.Ignore())  // Ignore sub-id if auto-generated
+     .ForMember(dest => dest.InMatId, opt => opt.Ignore())  // Ignore InMatId if already set
+     .ForMember(dest => dest.PmInwardMaterial, opt => opt.Ignore());  // Ignore the reference to `PmInwardMaterial`
+
+ CreateMap<PmInwardMaterialSub, PmInwardMaterialSubReadOnlyDto>();
